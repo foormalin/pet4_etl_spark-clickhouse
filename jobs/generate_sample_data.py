@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import csv
 import random
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from faker import Faker
+from pyspark.sql import SparkSession
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,16 +13,18 @@ RAW_DIR = ROOT / "data" / "raw"
 fake = Faker("ru_RU")
 
 
-def write_csv(path: Path, rows: list[dict]) -> None:
+def create_spark() -> SparkSession:
+    return SparkSession.builder.appName("generate-parquet-source-data").getOrCreate()
+
+
+def write_parquet(spark: SparkSession, path: Path, rows: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=list(rows[0]))
-        writer.writeheader()
-        writer.writerows(rows)
+    spark.createDataFrame(rows).write.mode("overwrite").parquet(str(path))
 
 
 def main() -> None:
     random.seed(42)
+    spark = create_spark()
 
     customers = [
         {
@@ -104,11 +106,13 @@ def main() -> None:
                 }
             )
 
-    write_csv(RAW_DIR / "customers.csv", customers)
-    write_csv(RAW_DIR / "products.csv", products)
-    write_csv(RAW_DIR / "orders.csv", orders)
-    write_csv(RAW_DIR / "events.csv", events)
-    print(f"Sample data generated in {RAW_DIR}")
+    write_parquet(spark, RAW_DIR / "customers", customers)
+    write_parquet(spark, RAW_DIR / "products", products)
+    write_parquet(spark, RAW_DIR / "orders", orders)
+    write_parquet(spark, RAW_DIR / "events", events)
+
+    spark.stop()
+    print(f"Parquet source data generated in {RAW_DIR}")
 
 
 if __name__ == "__main__":

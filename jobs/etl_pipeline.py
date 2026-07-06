@@ -26,8 +26,8 @@ def create_spark() -> SparkSession:
     )
 
 
-def read_csv(spark: SparkSession, name: str) -> DataFrame:
-    return spark.read.option("header", True).option("inferSchema", True).csv(str(RAW_DIR / f"{name}.csv"))
+def read_parquet(spark: SparkSession, name: str) -> DataFrame:
+    return spark.read.parquet(str(RAW_DIR / name))
 
 
 def write_parquet(df: DataFrame, path: Path, partition_by: list[str] | None = None) -> None:
@@ -113,10 +113,10 @@ def truncate_and_insert(table: str, df: DataFrame) -> None:
 def main() -> None:
     spark = create_spark()
 
-    customers = read_csv(spark, "customers")
-    products = read_csv(spark, "products")
-    orders = read_csv(spark, "orders")
-    events = read_csv(spark, "events").withColumn("event_time", F.to_timestamp("event_time"))
+    customers = read_parquet(spark, "customers")
+    products = read_parquet(spark, "products")
+    orders = read_parquet(spark, "orders")
+    events = read_parquet(spark, "events").withColumn("event_time", F.to_timestamp("event_time"))
 
     write_parquet(customers, LAKE_DIR / "bronze" / "customers")
     write_parquet(products, LAKE_DIR / "bronze" / "products")

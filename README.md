@@ -2,22 +2,25 @@
 
 ETL/ELT-проект для обработки данных интернет-магазина с использованием Apache Spark, PySpark и ClickHouse.
 
-Проект имитирует production-подход к аналитической платформе: исходные данные попадают в Data Lake, обрабатываются в Spark, сохраняются в bronze/silver/gold слоях и загружаются в ClickHouse для быстрых аналитических запросов.
+Проект имитирует production-подход к аналитической платформе: исходные данные хранятся в Parquet, обрабатываются в Spark, сохраняются в bronze/silver/gold слоях и загружаются в ClickHouse для быстрых аналитических запросов.
 
 ## Что реализовано
 
-- загрузка CSV-источников в lake-слой;
+- загрузка Parquet-источников в lake-слой;
 - преобразование данных средствами PySpark;
 - построение bronze/silver/gold слоев;
 - расчет витрин продаж, клиентских сегментов и эффективности товаров;
 - загрузка агрегированных данных в ClickHouse;
 - SQL-скрипты для создания таблиц и проверки аналитических запросов;
-- генератор синтетических данных для тестового запуска.
+- генератор синтетических Parquet-данных для тестового запуска.
 
 ## Архитектура
 
 ```text
-data/raw/*.csv
+data/raw/customers
+data/raw/products
+data/raw/orders
+data/raw/events
         |
         v
 Apache Spark / PySpark
@@ -47,21 +50,27 @@ ClickHouse analytics
 
 ```text
 .
-├── data/
-│   └── raw/
-│       ├── customers.csv
-│       ├── events.csv
-│       ├── orders.csv
-│       └── products.csv
-├── jobs/
-│   ├── etl_pipeline.py
-│   └── generate_sample_data.py
-├── sql/
-│   ├── 01_create_tables.sql
-│   └── 02_analytics_queries.sql
-├── docker-compose.yml
-├── requirements.txt
-└── README.md
+|-- data/
+|   `-- raw/
+|       `-- README.md
+|-- jobs/
+|   |-- etl_pipeline.py
+|   `-- generate_sample_data.py
+|-- sql/
+|   |-- 01_create_tables.sql
+|   `-- 02_analytics_queries.sql
+|-- docker-compose.yml
+|-- requirements.txt
+`-- README.md
+```
+
+После запуска генератора в `data/raw/` появятся Parquet-директории:
+
+```text
+data/raw/customers/
+data/raw/products/
+data/raw/orders/
+data/raw/events/
 ```
 
 ## Быстрый старт
@@ -78,7 +87,7 @@ docker compose up -d
 pip install -r requirements.txt
 ```
 
-При необходимости сгенерировать расширенный набор данных:
+Сгенерировать исходные Parquet-данные:
 
 ```bash
 python jobs/generate_sample_data.py
@@ -104,12 +113,12 @@ docker exec -i clickhouse clickhouse-client < sql/02_analytics_queries.sql
 
 ## Данные
 
-В проекте используются четыре источника:
+В проекте используются четыре Parquet-источника:
 
-- `customers.csv` - клиенты, регионы и даты регистрации;
-- `products.csv` - товары, категории и базовые цены;
-- `orders.csv` - заказы, статусы, количество и сумма;
-- `events.csv` - пользовательские события: просмотры, добавления в корзину, покупки.
+- `customers` - клиенты, регионы и даты регистрации;
+- `products` - товары, категории и базовые цены;
+- `orders` - заказы, статусы, количество и сумма;
+- `events` - пользовательские события: просмотры, добавления в корзину, покупки.
 
 ## Слои Lakehouse
 
@@ -146,9 +155,8 @@ docker exec -i clickhouse clickhouse-client < sql/02_analytics_queries.sql
 
 ## Оптимизация
 
-- промежуточные слои сохраняются в Parquet;
+- исходные и промежуточные данные хранятся в Parquet;
 - gold-витрина `daily_sales` партиционируется по дате;
 - тяжелые join и aggregation выполняются в Spark;
 - ClickHouse использует `MergeTree`;
 - таблицы ClickHouse имеют сортировочные ключи под типовые фильтры по датам, регионам и категориям.
-
