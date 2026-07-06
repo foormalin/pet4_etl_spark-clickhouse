@@ -8,6 +8,7 @@ from pathlib import Path
 JOBS_DIR = Path(__file__).resolve().parent
 
 STAGES = [
+    "init_clickhouse.py",
     "01_load_bronze.py",
     "02_transform_silver.py",
     "03_build_gold_and_load_clickhouse.py",

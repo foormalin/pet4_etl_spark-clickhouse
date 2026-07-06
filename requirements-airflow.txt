@@ -1,0 +1,5 @@
+apache-airflow==2.9.3
+pyspark==3.5.1
+clickhouse-connect==0.7.19
+pandas==2.2.2
+faker==25.8.0

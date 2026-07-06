@@ -53,12 +53,15 @@ ClickHouse analytics
 |-- data/
 |   `-- raw/
 |       `-- README.md
+|-- dags/
+|   `-- spark_clickhouse_etl_dag.py
 |-- jobs/
 |   |-- 01_load_bronze.py
 |   |-- 02_transform_silver.py
 |   |-- 03_build_gold_and_load_clickhouse.py
 |   |-- common.py
 |   |-- generate_sample_data.py
+|   |-- init_clickhouse.py
 |   `-- run_pipeline.py
 |-- sql/
 |   |-- 01_create_tables.sql
@@ -100,7 +103,7 @@ python jobs/generate_sample_data.py
 Создать таблицы ClickHouse:
 
 ```bash
-docker exec -i clickhouse clickhouse-client < sql/01_create_tables.sql
+python jobs/init_clickhouse.py
 ```
 
 Запустить все этапы ETL:
@@ -122,6 +125,48 @@ python jobs/03_build_gold_and_load_clickhouse.py
 ```bash
 docker exec -i clickhouse clickhouse-client < sql/02_analytics_queries.sql
 ```
+
+## Airflow DAG
+
+В проект добавлен DAG `dags/spark_clickhouse_etl_dag.py`.
+
+Он оркестрирует полный процесс:
+
+```text
+generate_raw_parquet
+        |
+        v
+init_clickhouse
+        |
+        v
+load_bronze
+        |
+        v
+transform_silver
+        |
+        v
+build_gold_and_load_clickhouse
+```
+
+Для запуска через Airflow установите зависимости:
+
+```bash
+pip install -r requirements-airflow.txt
+```
+
+Укажите путь к проекту для DAG:
+
+```bash
+set PROJECT_ROOT=C:\path\to\pet4_etl_spark-clickhouse
+```
+
+На Linux/macOS:
+
+```bash
+export PROJECT_ROOT=/path/to/pet4_etl_spark-clickhouse
+```
+
+Затем скопируйте или смонтируйте папку `dags/` в Airflow. DAG использует `BashOperator` и запускает те же Python-этапы, что и локальный `jobs/run_pipeline.py`.
 
 ## Данные
 
