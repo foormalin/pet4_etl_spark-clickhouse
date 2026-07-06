@@ -54,8 +54,12 @@ ClickHouse analytics
 |   `-- raw/
 |       `-- README.md
 |-- jobs/
-|   |-- etl_pipeline.py
-|   `-- generate_sample_data.py
+|   |-- 01_load_bronze.py
+|   |-- 02_transform_silver.py
+|   |-- 03_build_gold_and_load_clickhouse.py
+|   |-- common.py
+|   |-- generate_sample_data.py
+|   `-- run_pipeline.py
 |-- sql/
 |   |-- 01_create_tables.sql
 |   `-- 02_analytics_queries.sql
@@ -99,10 +103,18 @@ python jobs/generate_sample_data.py
 docker exec -i clickhouse clickhouse-client < sql/01_create_tables.sql
 ```
 
-Запустить ETL:
+Запустить все этапы ETL:
 
 ```bash
-python jobs/etl_pipeline.py
+python jobs/run_pipeline.py
+```
+
+Или выполнить этапы отдельно:
+
+```bash
+python jobs/01_load_bronze.py
+python jobs/02_transform_silver.py
+python jobs/03_build_gold_and_load_clickhouse.py
 ```
 
 Проверить витрины:
