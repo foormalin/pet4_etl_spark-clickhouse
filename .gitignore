@@ -220,6 +220,9 @@ __marimo__/
 # Project runtime data
 data/lake/
 clickhouse_data/
+postgres_data/
+airflow_logs/
+logs/
 data/raw/customers/
 data/raw/products/
 data/raw/orders/

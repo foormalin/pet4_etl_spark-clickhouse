@@ -1,136 +1,50 @@
 # pet4_etl_spark-clickhouse
 
-ETL/ELT-проект для обработки данных интернет-магазина с использованием Apache Spark, PySpark и ClickHouse.
+ETL/ELT-проект для обработки данных интернет-магазина с использованием Apache Spark, PySpark, ClickHouse и Apache Airflow.
 
-Проект имитирует production-подход к аналитической платформе: исходные данные хранятся в Parquet, обрабатываются в Spark, сохраняются в bronze/silver/gold слоях и загружаются в ClickHouse для быстрых аналитических запросов.
+Проект имитирует production-like аналитическую платформу: исходные данные хранятся в Parquet, обрабатываются в Spark, проходят bronze/silver/gold слои, проверяются на качество и загружаются в ClickHouse для быстрых аналитических запросов. Airflow DAG оркестрирует весь процесс.
 
 ## Что реализовано
 
-- загрузка Parquet-источников в lake-слой;
-- преобразование данных средствами PySpark;
-- построение bronze/silver/gold слоев;
-- расчет витрин продаж, клиентских сегментов и эффективности товаров;
-- загрузка агрегированных данных в ClickHouse;
-- SQL-скрипты для создания таблиц и проверки аналитических запросов;
-- генератор синтетических Parquet-данных для тестового запуска.
+- генерация исходных Parquet-данных;
+- загрузка raw Parquet в bronze-слой;
+- очистка и обогащение данных в silver-слое;
+- построение gold-витрин;
+- загрузка витрин в ClickHouse;
+- Airflow DAG для запуска пайплайна;
+- Docker Compose для ClickHouse, PostgreSQL и Airflow;
+- проверки качества данных;
+- логирование этапов;
+- Makefile для частых команд;
+- базовые pytest-тесты.
 
 ## Архитектура
 
 ```text
-data/raw/customers
-data/raw/products
-data/raw/orders
-data/raw/events
+data/raw/*.parquet
         |
         v
-Apache Spark / PySpark
+01_load_bronze.py
         |
-        +--> data/lake/bronze
-        +--> data/lake/silver
+        v
+data/lake/bronze
+        |
+        v
+02_transform_silver.py
+        |
+        v
+data/lake/silver
+        |
+        v
+03_build_gold_and_load_clickhouse.py
+        |
         +--> data/lake/gold
         |
         v
 ClickHouse analytics
-        |
-        +--> daily_sales
-        +--> customer_segments
-        +--> product_performance
 ```
 
-## Стек
-
-- Python 3.11
-- Apache Spark 3.5
-- PySpark
-- ClickHouse
-- Docker Compose
-- Parquet
-
-## Структура проекта
-
-```text
-.
-|-- data/
-|   `-- raw/
-|       `-- README.md
-|-- dags/
-|   `-- spark_clickhouse_etl_dag.py
-|-- jobs/
-|   |-- 01_load_bronze.py
-|   |-- 02_transform_silver.py
-|   |-- 03_build_gold_and_load_clickhouse.py
-|   |-- common.py
-|   |-- generate_sample_data.py
-|   |-- init_clickhouse.py
-|   `-- run_pipeline.py
-|-- sql/
-|   |-- 01_create_tables.sql
-|   `-- 02_analytics_queries.sql
-|-- docker-compose.yml
-|-- requirements.txt
-`-- README.md
-```
-
-После запуска генератора в `data/raw/` появятся Parquet-директории:
-
-```text
-data/raw/customers/
-data/raw/products/
-data/raw/orders/
-data/raw/events/
-```
-
-## Быстрый старт
-
-Запустить ClickHouse:
-
-```bash
-docker compose up -d
-```
-
-Установить зависимости:
-
-```bash
-pip install -r requirements.txt
-```
-
-Сгенерировать исходные Parquet-данные:
-
-```bash
-python jobs/generate_sample_data.py
-```
-
-Создать таблицы ClickHouse:
-
-```bash
-python jobs/init_clickhouse.py
-```
-
-Запустить все этапы ETL:
-
-```bash
-python jobs/run_pipeline.py
-```
-
-Или выполнить этапы отдельно:
-
-```bash
-python jobs/01_load_bronze.py
-python jobs/02_transform_silver.py
-python jobs/03_build_gold_and_load_clickhouse.py
-```
-
-Проверить витрины:
-
-```bash
-docker exec -i clickhouse clickhouse-client < sql/02_analytics_queries.sql
-```
-
-## Airflow DAG
-
-В проект добавлен DAG `dags/spark_clickhouse_etl_dag.py`.
-
-Он оркестрирует полный процесс:
+Airflow DAG:
 
 ```text
 generate_raw_parquet
@@ -148,42 +62,181 @@ transform_silver
 build_gold_and_load_clickhouse
 ```
 
-Для запуска через Airflow установите зависимости:
+## Стек
 
-```bash
-pip install -r requirements-airflow.txt
+- Python 3.11
+- Apache Spark 3.5 / PySpark
+- Apache Airflow 2.9
+- ClickHouse 24.3
+- PostgreSQL 15 для Airflow metadata
+- Docker Compose
+- Parquet
+- pytest
+
+## Структура проекта
+
+```text
+.
+|-- dags/
+|   `-- spark_clickhouse_etl_dag.py
+|-- data/
+|   `-- raw/
+|       `-- README.md
+|-- jobs/
+|   |-- 01_load_bronze.py
+|   |-- 02_transform_silver.py
+|   |-- 03_build_gold_and_load_clickhouse.py
+|   |-- common.py
+|   |-- data_quality.py
+|   |-- generate_sample_data.py
+|   |-- init_clickhouse.py
+|   `-- run_pipeline.py
+|-- sql/
+|   |-- 01_create_tables.sql
+|   `-- 02_analytics_queries.sql
+|-- tests/
+|-- .env.example
+|-- Dockerfile.airflow
+|-- docker-compose.yml
+|-- Makefile
+|-- requirements.txt
+|-- requirements-airflow.txt
+`-- README.md
 ```
 
-Укажите путь к проекту для DAG:
+## Быстрый старт через Docker и Airflow
+
+Скопируйте пример окружения при необходимости:
 
 ```bash
-set PROJECT_ROOT=C:\path\to\pet4_etl_spark-clickhouse
+cp .env.example .env
 ```
 
-На Linux/macOS:
+На Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Соберите Airflow-образ:
 
 ```bash
-export PROJECT_ROOT=/path/to/pet4_etl_spark-clickhouse
+docker compose build
 ```
 
-Затем скопируйте или смонтируйте папку `dags/` в Airflow. DAG использует `BashOperator` и запускает те же Python-этапы, что и локальный `jobs/run_pipeline.py`.
+Инициализируйте Airflow:
+
+```bash
+docker compose run --rm airflow-init
+```
+
+Запустите сервисы:
+
+```bash
+docker compose up -d clickhouse postgres airflow-webserver airflow-scheduler
+```
+
+Откройте Airflow UI:
+
+```text
+http://localhost:8080
+```
+
+Логин и пароль по умолчанию:
+
+```text
+airflow / airflow
+```
+
+Запустите DAG:
+
+```text
+spark_clickhouse_lakehouse_etl
+```
+
+## Локальный запуск без Airflow
+
+Установите зависимости:
+
+```bash
+pip install -r requirements.txt
+```
+
+Запустите ClickHouse:
+
+```bash
+docker compose up -d clickhouse
+```
+
+Сгенерируйте raw Parquet:
+
+```bash
+python jobs/generate_sample_data.py
+```
+
+Запустите весь пайплайн:
+
+```bash
+python jobs/run_pipeline.py
+```
+
+Или выполните этапы отдельно:
+
+```bash
+python jobs/init_clickhouse.py
+python jobs/01_load_bronze.py
+python jobs/02_transform_silver.py
+python jobs/03_build_gold_and_load_clickhouse.py
+```
+
+Проверьте витрины:
+
+```bash
+docker exec -i clickhouse clickhouse-client < sql/02_analytics_queries.sql
+```
+
+## Makefile
+
+```bash
+make up          # поднять Docker Compose
+make airflow-init
+make generate
+make init-db
+make pipeline
+make test
+make logs
+make down
+```
 
 ## Данные
 
-В проекте используются четыре Parquet-источника:
+Генератор создает четыре Parquet-источника:
 
 - `customers` - клиенты, регионы и даты регистрации;
 - `products` - товары, категории и базовые цены;
 - `orders` - заказы, статусы, количество и сумма;
-- `events` - пользовательские события: просмотры, добавления в корзину, покупки.
+- `events` - пользовательские события.
 
-## Слои Lakehouse
+Сгенерированные данные не коммитятся в репозиторий:
 
-`bronze` хранит сырые данные в Parquet без бизнес-логики.
+```text
+data/raw/customers/
+data/raw/products/
+data/raw/orders/
+data/raw/events/
+data/lake/
+```
 
-`silver` хранит очищенные и обогащенные данные: оплаченные заказы соединяются с клиентами и товарами, приводятся типы и даты.
+## Проверки качества данных
 
-`gold` хранит агрегированные витрины для аналитических запросов и последующей загрузки в ClickHouse.
+В этапы встроены проверки:
+
+- датасеты не пустые;
+- ключевые поля не содержат null;
+- цены, суммы и количества положительные;
+- `orders.customer_id` существует в `customers`;
+- `orders.product_id` существует в `products`;
+- gold-витрины не пустые перед загрузкой в ClickHouse.
 
 ## Витрины ClickHouse
 
@@ -210,10 +263,28 @@ export PROJECT_ROOT=/path/to/pet4_etl_spark-clickhouse
 - количество покупателей;
 - эффективность категорий.
 
-## Оптимизация
+## Тесты
 
-- исходные и промежуточные данные хранятся в Parquet;
-- gold-витрина `daily_sales` партиционируется по дате;
-- тяжелые join и aggregation выполняются в Spark;
-- ClickHouse использует `MergeTree`;
-- таблицы ClickHouse имеют сортировочные ключи под типовые фильтры по датам, регионам и категориям.
+```bash
+pytest -q
+```
+
+Тесты проверяют вспомогательную SQL-логику и порядок этапов пайплайна.
+
+## Конфигурация
+
+Основные переменные окружения:
+
+```text
+CLICKHOUSE_HOST
+CLICKHOUSE_PORT
+CLICKHOUSE_DATABASE
+PROJECT_ROOT
+PYTHON_BIN
+AIRFLOW_UID
+AIRFLOW_ADMIN_USER
+AIRFLOW_ADMIN_PASSWORD
+AIRFLOW_ADMIN_EMAIL
+```
+
+Для локального запуска значения по умолчанию подходят без `.env`. Для Docker/Airflow можно использовать `.env.example` как шаблон.

@@ -7,10 +7,13 @@ from pathlib import Path
 from faker import Faker
 from pyspark.sql import SparkSession
 
+from common import get_logger
+
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW_DIR = ROOT / "data" / "raw"
 fake = Faker("ru_RU")
+logger = get_logger("generate_sample_data")
 
 
 def create_spark() -> SparkSession:
@@ -23,6 +26,7 @@ def write_parquet(spark: SparkSession, path: Path, rows: list[dict]) -> None:
 
 
 def main() -> None:
+    logger.info("Generating sample Parquet data")
     random.seed(42)
     spark = create_spark()
 
@@ -112,7 +116,7 @@ def main() -> None:
     write_parquet(spark, RAW_DIR / "events", events)
 
     spark.stop()
-    print(f"Parquet source data generated in {RAW_DIR}")
+    logger.info("Parquet source data generated in %s", RAW_DIR)
 
 
 if __name__ == "__main__":

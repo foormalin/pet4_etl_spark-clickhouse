@@ -4,8 +4,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+from common import get_logger
+
 
 JOBS_DIR = Path(__file__).resolve().parent
+logger = get_logger("run_pipeline")
 
 STAGES = [
     "init_clickhouse.py",
@@ -17,8 +20,9 @@ STAGES = [
 
 def main() -> None:
     for stage in STAGES:
-        print(f"Running {stage}")
+        logger.info("Running %s", stage)
         subprocess.run([sys.executable, str(JOBS_DIR / stage)], check=True)
+    logger.info("Pipeline finished")
 
 
 if __name__ == "__main__":
