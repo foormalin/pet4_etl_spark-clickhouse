@@ -164,6 +164,19 @@ spark_clickhouse_lakehouse_etl
 make up
 ```
 
+Если Codespace открылся в recovery mode, выполните команду VS Code:
+
+```text
+Codespaces: Rebuild Container
+```
+
+После пересборки проверьте Docker:
+
+```bash
+docker version
+docker compose version
+```
+
 Откройте проброшенный порт `8080` и войдите в Airflow:
 
 ```text
