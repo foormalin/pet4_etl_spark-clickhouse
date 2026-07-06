@@ -154,6 +154,36 @@ airflow / airflow
 spark_clickhouse_lakehouse_etl
 ```
 
+## Запуск в GitHub Codespaces
+
+Проект содержит `.devcontainer/devcontainer.json`, поэтому Codespace поднимается с Python 3.11 и Docker Compose.
+
+После открытия Codespace выполните:
+
+```bash
+make up
+```
+
+Откройте проброшенный порт `8080` и войдите в Airflow:
+
+```text
+airflow / airflow
+```
+
+Запустите DAG:
+
+```text
+spark_clickhouse_lakehouse_etl
+```
+
+Порты, которые используются в Codespaces:
+
+```text
+8080 - Airflow UI
+8123 - ClickHouse HTTP
+9000 - ClickHouse Native
+```
+
 ## Локальный запуск без Airflow
 
 Установите зависимости:
